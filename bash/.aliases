@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Dotfiles
+alias cfg='/usr/bin/git --git-dir=$HOME/dotfiles/ --work-tree=$HOME'
+
+# NeoVim
+alias vim='nvim'
+
+# Python
+alias python='python3'
+alias pip='pip3'
+
