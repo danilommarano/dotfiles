@@ -6,9 +6,9 @@ gerenciador de links simbólicos. Ele faz com que arquivos localizados em
 diferentes diretórios sejam organizados num único só.
 
 Eu aprendi a configurar e usar o Stow com 
-![este](https://www.youtube.com/watch?v=CFzEuBGPPPg&t=1389s) vídeo (em inglês).
+[este](https://www.youtube.com/watch?v=CFzEuBGPPPg&t=1389s) vídeo (em inglês).
 Além disso, a documentação dele pode ser encontrada 
-![aqui](https://www.gnu.org/software/stow/manual/stow.html)
+[aqui](https://www.gnu.org/software/stow/manual/stow.html)
 
 
 ## 2. Configuração
