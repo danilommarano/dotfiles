@@ -3,10 +3,11 @@ if status is-interactive
     set fish_greeting
 end
 
+# Some aliases
 alias vim='nvim'
 
+# My prompt shell is starship
 starship init fish | source
 
-set ght "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"
-
-
+# My personal environment variables
+fish ~/.env.fish
