@@ -1,2 +1,8 @@
-README.md
+^/README.*
+^/LICENSE.*
+^/COPYING.*
+
+\.git
+\.gitignore
+
 
