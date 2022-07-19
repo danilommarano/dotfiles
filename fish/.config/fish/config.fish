@@ -49,7 +49,8 @@ alias awmrc 'nvim ~/dotfiles/awesome/.config/awesome/rc.lua'
 alias ls 'ls --color=auto'
 alias la 'ls -a'
 alias ll 'ls -alFh'
-alias l 'l' alias l. "ls -A | egrep '^\.'"
+alias l 'l'
+alias l. "ls -A | egrep '^\.'"
 
 #fix obvious typo's
 alias cd.. 'cd ..'
