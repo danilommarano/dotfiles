@@ -1,6 +1,6 @@
 ### EXPORT ###
-export EDITOR='nano'
-export VISUAL='nano'
+export EDITOR='nvim'
+export VISUAL='nvim'
 export HISTCONTROL=ignoreboth:erasedups
 export PAGER='most'
 
@@ -34,13 +34,22 @@ bind "set completion-ignore-case on"
 #vim
 alias v='nvim'
 alias vim='nvim'
+alias vimrc='nvim ~/dotfiles/nvim/.config/nvim/init.lua'
 alias nvimrc='nvim ~/dotfiles/nvim/.config/nvim/init.lua'
-alias nvimkbds='nvim ~/dotfiles/nvim/.config/nvim/lua/keybinds/init.lua'
-alias nvimplgs='nvim ~/dotfiles/nvim/.config/nvim/lua/plugins/init.lua'
+alias vimkeys='nvim ~/dotfiles/nvim/.config/nvim/lua/keybinds/init.lua'
+alias nvimkeys='nvim ~/dotfiles/nvim/.config/nvim/lua/keybinds/init.lua'
+alias vimplugs='nvim ~/dotfiles/nvim/.config/nvim/lua/plugins/init.lua'
+alias nvimplugs='nvim ~/dotfiles/nvim/.config/nvim/lua/plugins/init.lua'
+alias vimopts='nvim ~/dotfiles/nvim/.config/nvim/lua/options/init.lua'
 alias nvimopts='nvim ~/dotfiles/nvim/.config/nvim/lua/options/init.lua'
 
-#configurations
 alias bashrc='nvim ~/dotfiles/bash/.bashrc'
+
+alias fishrc='vim ~/dotfiles/fish/.config/fish/config.fish'
+alias fishalias='vim ~/dotfiles/fish/.config/fish/config.fish'
+
+alias awmrc='nvim ~/dotfiles/awesome/.config/awesome/rc.lua'
+
 
 
 # By: ArcoLinux
@@ -354,6 +363,8 @@ alias personal='cp -Rf /personal/* ~'
 #in there. They will not be overwritten by skel.
 
 [[ -f ~/.bashrc-personal ]] && . ~/.bashrc-personal
+
+fish
 
 # reporting tools - install when not installed
 #neofetch
