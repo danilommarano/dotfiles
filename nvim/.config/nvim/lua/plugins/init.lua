@@ -32,7 +32,11 @@ return require('packer').startup(function()
   -- Markdoow Viewer
   use 'tpope/vim-markdown'
 
+  -- LSP
   use 'nvim-treesitter/nvim-treesitter'
+  use "williamboman/nvim-lsp-installer"
+  use "neovim/nvim-lspconfig"
+
   use 'nvim-lua/popup.nvim'
   use 'nvim-lua/plenary.nvim'
   use 'nvim-telescope/telescope.nvim'
