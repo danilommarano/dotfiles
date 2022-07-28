@@ -4,10 +4,7 @@
 --[[ NeoVim Options ]]
 
 
--- 1. Variables 
-
--- Set leader key to space
-vim.g.mapleader = ' '
+-- 1. Variables
 
 -- Set the colorscheme to gruvbox
 vim.cmd('colorscheme gruvbox')
@@ -17,9 +14,9 @@ vim.cmd('colorscheme gruvbox')
 -- 2. Global Options (o)
 
 -- Line numbers
-vim.o.nu = true 
+vim.o.nu = true
 
--- After exiting NVim without saving, it will not ask if you want to restore 
+-- After exiting NVim without saving, it will not ask if you want to restore
 -- a pending change. For this you need to save your files constantly.
 vim.o.backup = false
 
@@ -44,8 +41,8 @@ vim.wo.wrap = false
 
 -- Tab character is 4 spaces long
 tabsize = 4
-vim.bo.tabstop = tabsize 
-vim.bo.softtabstop = tabsize 
+vim.bo.tabstop = tabsize
+vim.bo.softtabstop = tabsize
 vim.bo.shiftwidth = tabsize
 
 -- Convert Tab character to multiple spaces

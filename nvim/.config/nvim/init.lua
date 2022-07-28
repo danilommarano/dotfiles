@@ -1,13 +1,13 @@
 --     ____                                |
 --    / __ \  ____ _   _____  _____  ____  | https://github.com/danilommarano
 --   / / / / / __ `/  / ___/ / ___/ / __ \ | https://twitter.com/danilommarano
---  / /_/ / / /_/ /  / /    / /__  / /_/ / | https://
--- /_____/  \__,_/  /_/     \___/  \____/  | 
+--  / /_/ / / /_/ /  / /    / /__  / /_/ / |
+-- /_____/  \__,_/  /_/     \___/  \____/  |
 --                                         |
 
 
 -- Set leader key to space
-vim.g.mapleader = ' '
+vim.g.mapleader = ','
 
 require('plugins')
 require('options')
