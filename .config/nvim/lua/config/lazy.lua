@@ -82,8 +82,67 @@ require("lazy").setup({
             "hrsh7th/nvim-cmp",
         },
     },
+  -- Treesiter and Syntax
+  {
+      "nvim-treesitter/nvim-treesitter",
+      build = ":TSUpdate",
+      event = { "BufReadPost", "BufNewFile" },
+      config = function()
+        require("config.treesitter")
+      end,
+    },
+    {
+      "nvim-treesitter/nvim-treesitter-textobjects",
+      lazy = true,
+    },
+    {
+      "nvim-treesitter/playground",
+      cmd = "TSPlaygroundToggle",
+    },
+
+  -- Comentários com `gc`
+    {
+      "numToStr/Comment.nvim",
+      config = function()
+        require("Comment").setup()
+      end,
+      event = "VeryLazy",
+    },
+
+    -- Surround (ys, ds, cs)
+    {
+      "tpope/vim-surround",
+      event = "VeryLazy",
+    },
+
+    -- Fecha parênteses e aspas
+    {
+      "windwp/nvim-autopairs",
+      event = "InsertEnter",
+      config = function()
+        require("nvim-autopairs").setup({})
+      end,
+    },
+
+  -- Git
+    -- -- Mostra alterações na margem (lado esquerdo)
+    {
+      "lewis6991/gitsigns.nvim",
+      event = "BufReadPre",
+      config = function()
+        require("gitsigns").setup()
+      end,
+    },
+    {
+      "tpope/vim-fugitive",
+      cmd = { "Git", "G" }, -- só carrega quando você usa o comando
+    },
 
   },
+
+
+
+
   -- Configure any other settings here. See the documentation for more details.
   -- colorscheme that will be used when installing plugins.
   install = { colorscheme = { "habamax" } },
