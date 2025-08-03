@@ -1,4 +1,9 @@
 require("config.lazy")
+require("config.lsp")
+require("config.lualine")
+require("config.none_ls")
+require("config.cmp")
+require("config.codeium")
 
 vim.o.background = "dark" -- or "light" for light mode
 vim.cmd([[colorscheme gruvbox]])

@@ -24,6 +24,7 @@ vim.g.maplocalleader = "\\"
 -- Setup lazy.nvim
 require("lazy").setup({
   spec = {
+
     -- Theming
     { "nvim-tree/nvim-web-devicons", opts = {} },
     { "ellisonleao/gruvbox.nvim", priority = 1000 , config = true, opts = ...},
@@ -37,7 +38,51 @@ require("lazy").setup({
         ---@module "ibl"
         ---@type ibl.config
         opts = {},
-    }
+    },
+
+
+
+    -- LSP (Language Server Protocol)
+    {
+      "neovim/nvim-lspconfig",
+      event = { "BufReadPre", "BufNewFile" },
+    },
+    {
+      "williamboman/mason.nvim",
+      build = ":MasonUpdate",
+      config = true
+    },
+    {
+      "williamboman/mason-lspconfig.nvim",
+      dependencies = { "williamboman/mason.nvim" },
+    },
+    {
+      "nvimtools/none-ls.nvim",
+      event = { "BufReadPre", "BufNewFile" },
+      dependencies = { "nvim-lua/plenary.nvim" },
+    },
+
+    -- Autocomplete
+    {
+      "hrsh7th/nvim-cmp",
+      event = "InsertEnter",
+      dependencies = {
+        "hrsh7th/cmp-buffer",
+        "hrsh7th/cmp-path",
+        "hrsh7th/cmp-nvim-lsp",
+        "L3MON4D3/LuaSnip",
+        "saadparwaiz1/cmp_luasnip",
+        "rafamadriz/friendly-snippets",
+      },
+    },
+    {
+        "Exafunction/windsurf.nvim",
+        dependencies = {
+            "nvim-lua/plenary.nvim",
+            "hrsh7th/nvim-cmp",
+        },
+    },
+
   },
   -- Configure any other settings here. See the documentation for more details.
   -- colorscheme that will be used when installing plugins.
