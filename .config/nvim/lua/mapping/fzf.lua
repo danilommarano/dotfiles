@@ -1,0 +1,5 @@
+vim.keymap.set("n", "<leader>ff", "<cmd>FzfLua files<CR>", { desc = "Buscar arquivos" })
+vim.keymap.set("n", "<leader>fg", "<cmd>FzfLua live_grep<CR>", { desc = "Buscar texto no projeto" })
+vim.keymap.set("n", "<leader>fb", "<cmd>FzfLua buffers<CR>", { desc = "Listar buffers" })
+vim.keymap.set("n", "<leader>fh", "<cmd>FzfLua help_tags<CR>", { desc = "Buscar na ajuda" })
+vim.keymap.set("n", "<leader>fk", "<cmd>FzfLua keymaps<CR>", { desc = "Ver atalhos" })
