@@ -18,58 +18,6 @@ local hotkeys_popup = require("awful.hotkeys_popup")
 -- when client with a matching name is opened:
 require("awful.hotkeys_popup.keys")
 
-local function svg_to_png(svg_path, png_path, size)
-	awful.spawn.with_shell(
-		"rsvg-convert -w " .. size .. " -h " .. size .. " '" .. svg_path .. "' -o '" .. png_path .. "'"
-	)
-end
-
-local function svg_button(c, name, color, action)
-	local svg = name .. ".svg"
-	local svg_path = gears.filesystem.get_configuration_dir() .. "icons/" .. svg
-	local png_path = gears.filesystem.get_cache_dir() .. "/" .. svg:gsub(".svg", ".png")
-	svg_to_png(svg_path, png_path, 16)
-
-	local imagebox = wibox.widget({
-		image = png_path,
-		resize = true,
-		forced_height = 16,
-		forced_width = 16,
-		widget = wibox.widget.imagebox,
-	})
-
-	local container = wibox.widget({
-		{
-			imagebox,
-			margins = 4,
-			widget = wibox.container.margin,
-		},
-		buttons = gears.table.join(awful.button({}, 1, nil, function()
-			action(c)
-		end)),
-		widget = wibox.container.background,
-	})
-
-	-- Adiciona tooltip (hover)
-	container:connect_signal("mouse::enter", function()
-		container._hover_tip = naughty.notify({
-			text = name:sub(1, 1):upper() .. name:sub(2),
-			timeout = 1,
-			hover_timeout = 0.5,
-			screen = mouse.screen,
-		})
-	end)
-
-	container:connect_signal("mouse::leave", function()
-		if container._hover_tip then
-			naughty.destroy(container._hover_tip)
-			container._hover_tip = nil
-		end
-	end)
-
-	return container
-end
-
 awful.spawn.with_shell("picom --experimental-backends")
 
 local battery_widget = wibox.widget({
@@ -127,12 +75,21 @@ local volume_slider = wibox.widget({
 -- Limita o tamanho do slider na barra (ex: 100px de largura)
 local volume_container = wibox.container.constraint(volume_slider, "exact", 100)
 
+-- Texto da porcentagem
+local volume_percent = wibox.widget({
+	widget = wibox.widget.textbox,
+	text = "0%",
+	align = "left",
+	valign = "center",
+})
+
 -- Função para atualizar o valor do slider com volume atual do sistema
 local function update_volume()
 	awful.spawn.easy_async_with_shell("amixer get Master | grep -o '[0-9]*%' | head -1 | tr -d '%'", function(out)
 		local vol = tonumber(out)
 		if vol then
 			volume_slider.value = vol
+			volume_percent.text = vol .. "%"
 		end
 	end)
 end
@@ -140,6 +97,7 @@ end
 -- Atualiza volume ao mover o slider
 volume_slider:connect_signal("property::value", function()
 	local vol = math.floor(volume_slider.value)
+	volume_percent.text = vol .. "%" -- 👈 atualiza o texto
 	awful.spawn("amixer set Master " .. vol .. "%", false)
 end)
 
@@ -150,6 +108,122 @@ gears.timer({
 	call_now = true,
 	callback = update_volume,
 })
+
+-- Botão "▼" na wibar
+local dropdown_btn = wibox.widget({
+	widget = wibox.widget.textbox,
+	markup = "▼",
+	align = "center",
+	valign = "center",
+})
+
+-- Texto fixo do dropdown
+local dropdown_text = wibox.widget({
+	widget = wibox.widget.textbox,
+	text = "Teclado: …",
+	align = "left",
+	valign = "center",
+})
+
+-- Atualiza com o layout atual do teclado (layout + variante, se houver)
+local function update_keyboard_info()
+	awful.spawn.easy_async_with_shell(
+		[[
+        L=$(setxkbmap -query | awk '/layout/ {print $2}')
+        V=$(setxkbmap -query | awk '/variant/ {print $2}')
+        if [ -n "$V" ]; then echo "$L ($V)"; else echo "$L"; fi
+    ]],
+		function(out)
+			local layout = (out or ""):gsub("%s+$", "")
+			if layout == "" then
+				layout = "desconhecido"
+			end
+			dropdown_text.text = "Teclado: " .. layout
+		end
+	)
+end
+
+-- Atualiza agora e periodicamente (caso você troque o layout por atalho)
+gears.timer({
+	timeout = 5,
+	autostart = true,
+	call_now = true,
+	callback = update_keyboard_info,
+})
+
+-- Conteúdo do popup (linha 1: teclado; linha 2: volume + slider + %)
+local dropdown_content = wibox.widget({
+	{
+		-- Linha do teclado
+		dropdown_text, -- já mostra "Teclado: <layout>"
+		margins = 10,
+		widget = wibox.container.margin,
+	},
+	{
+		-- Linha do volume
+		{
+			{
+				widget = wibox.widget.textbox,
+				markup = "🔊",
+				align = "center",
+				valign = "center",
+			},
+			wibox.container.constraint(volume_slider, "exact", 140, 14),
+			{
+				volume_percent, -- "73%"
+				left = 8,
+				widget = wibox.container.margin,
+			},
+			spacing = 8,
+			layout = wibox.layout.fixed.horizontal,
+		},
+		margins = 10,
+		widget = wibox.container.margin,
+	},
+	spacing = 0,
+	layout = wibox.layout.fixed.vertical,
+})
+
+-- Popup ancorado ao botão (abre abaixo do botão, no canto direito)
+local dropdown_popup = awful.popup({
+	widget = wibox.widget({
+		{
+			dropdown_content,
+			margins = 10,
+			widget = wibox.container.margin,
+		},
+		bg = "#222222",
+		widget = wibox.container.background,
+	}),
+	ontop = true,
+	visible = false,
+	shape = gears.shape.rounded_rect,
+	border_width = 1,
+	border_color = "#444444",
+	maximum_width = 360, -- opcional, só p/ evitar esticar
+	maximum_height = 160,
+})
+
+-- Fecha automaticamente quando o mouse sai de cima do popup
+dropdown_popup:connect_signal("mouse::leave", function()
+	dropdown_popup.visible = false
+end)
+
+-- Clique no botão: alterna o popup e atualiza o texto
+dropdown_btn:buttons(gears.table.join(awful.button({}, 1, function()
+	update_keyboard_info()
+	update_volume()
+
+	local s = awful.screen.focused()
+	local top_gap = (s.mywibox and s.mywibox.height or 0) + 10
+
+	awful.placement.top_right(dropdown_popup, {
+		parent = s,
+		margins = { top = top_gap, right = 8 },
+	})
+
+	dropdown_popup.visible = not dropdown_popup.visible
+end)))
 
 -- {{{ Error handling
 -- Check if awesome encountered an error during startup and fell back to
@@ -185,7 +259,6 @@ end
 -- {{{ Variable definitions
 -- Themes define colours, icons, font and wallpapers.
 beautiful.init(gears.filesystem.get_configuration_dir() .. "themes/theme.lua")
-naughty.notify({ title = "Theme loaded", text = beautiful.titlebar_bg_normal })
 beautiful.wallpaper = (gears.filesystem.get_configuration_dir() .. "themes/wall.png")
 
 -- This is used later as the default terminal and editor to run.
@@ -202,22 +275,7 @@ modkey = "Mod4"
 
 -- Table of layouts to cover with awful.layout.inc, order matters.
 awful.layout.layouts = {
-	awful.layout.suit.floating,
 	awful.layout.suit.tile,
-	awful.layout.suit.tile.left,
-	awful.layout.suit.tile.bottom,
-	awful.layout.suit.tile.top,
-	awful.layout.suit.fair,
-	awful.layout.suit.fair.horizontal,
-	awful.layout.suit.spiral,
-	awful.layout.suit.spiral.dwindle,
-	awful.layout.suit.max,
-	awful.layout.suit.max.fullscreen,
-	awful.layout.suit.magnifier,
-	awful.layout.suit.corner.nw,
-	-- awful.layout.suit.corner.ne,
-	-- awful.layout.suit.corner.sw,
-	-- awful.layout.suit.corner.se,
 }
 -- }}}
 
@@ -367,19 +425,27 @@ awful.screen.connect_for_each_screen(function(s)
 		layout = wibox.layout.align.horizontal,
 		{ -- Left widgets
 			layout = wibox.layout.fixed.horizontal,
-			mylauncher,
-			s.mytaglist,
+			--mylauncher,
 			s.mypromptbox,
 		},
-		s.mytasklist, -- Middle widget
+		-- Centro real: relógio centralizado na tela
+		wibox.widget({
+			{
+				mytextclock,
+				layout = wibox.layout.align.horizontal,
+				expand = "none",
+			},
+			halign = "center",
+			valign = "center",
+			widget = wibox.container.place,
+		}),
 		{ -- Right widgets
 			layout = wibox.layout.fixed.horizontal,
-			mykeyboardlayout,
+			--mykeyboardlayout,
 			wibox.widget.systray(),
 			battery_widget,
-			volume_container,
-			mytextclock,
-			s.mylayoutbox,
+			--volume_container,
+			dropdown_btn,
 		},
 	})
 end)
@@ -649,7 +715,7 @@ awful.rules.rules = {
 	-- Add titlebars to normal clients and dialogs
 	{
 		rule_any = { type = { "normal", "dialog" } },
-		properties = { titlebars_enabled = true },
+		properties = { titlebars_enabled = false },
 	},
 
 	-- Set Firefox to always map on the tag named "2" on screen 1.
@@ -679,69 +745,13 @@ client.connect_signal("manage", function(c)
 end)
 
 -- Add a titlebar if titlebars_enabled is set to true in the rules.
-client.connect_signal("request::titlebars", function(c)
-	local buttons = gears.table.join(
-		awful.button({}, 1, function()
-			c:emit_signal("request::activate", "titlebar", { raise = true })
-			awful.mouse.client.move(c)
-		end),
-		awful.button({}, 3, function()
-			c:emit_signal("request::activate", "titlebar", { raise = true })
-			awful.mouse.client.resize(c)
-		end)
-	)
-
-	awful.titlebar(c, { size = 30 }):setup({
-		{ -- Left
-			buttons = buttons,
-			layout = wibox.layout.fixed.horizontal,
-		},
-		{ -- Middle
-			{ -- Title
-				align = "center",
-				widget = awful.titlebar.widget.titlewidget(c),
-			},
-			buttons = buttons,
-			layout = wibox.layout.flex.horizontal,
-		},
-		{ -- Right
-			-- Blue
-			svg_button(c, "ontop", "#0099FF", function(c)
-				c.ontop = not c.ontop
-			end),
-			-- Purple
-			svg_button(c, "sticky", "#C792EA", function(c)
-				c.sticky = not c.sticky
-			end),
-			-- Yellow
-			svg_button(c, "maximize", "#FFBD2E", function(c)
-				c.maximized = not c.maximized
-				c:raise()
-			end),
-			-- Green
-			svg_button(c, "minimize", "#27C93F", function(c)
-				c.minimized = true
-			end),
-			svg_button(c, "close", "#FF5F56", function(c)
-				c:kill()
-			end),
-			layout = wibox.layout.fixed.horizontal(),
-		},
-		layout = wibox.layout.align.horizontal,
-	})
-end)
-
-client.connect_signal("focus", function(c)
-	awful.titlebar(c).bg = beautiful.titlebar_bg_focus
-end)
-
-client.connect_signal("unfocus", function(c)
-	awful.titlebar(c).bg = beautiful.titlebar_bg_normal
-end)
-
 -- Enable sloppy focus, so that focus follows mouse.
 client.connect_signal("mouse::enter", function(c)
 	c:emit_signal("request::activate", "mouse_enter", { raise = false })
+end)
+
+client.connect_signal("request::titlebars", function(c)
+	awful.titlebar.hide(c)
 end)
 
 -- }}}
