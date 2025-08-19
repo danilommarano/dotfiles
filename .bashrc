@@ -14,3 +14,5 @@ export PATH="$HOME/.cargo/bin:$PATH"
 
 # Carregar variáveis secretas
 [ -f ~/.env.local ] && source ~/.env.local
+
+. "$HOME/.local/bin/env"
