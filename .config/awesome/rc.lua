@@ -20,6 +20,29 @@ require("awful.hotkeys_popup.keys")
 
 awful.spawn.with_shell("picom --experimental-backends")
 
+beautiful.init(gears.filesystem.get_configuration_dir() .. "themes/theme.lua")
+beautiful.font = "Inter 10"
+
+-- Paleta base (cai para gruvbox padrão se o theme não tiver)
+local GB_DARK = beautiful.bg_normal
+local GB_LIGHT = beautiful.fg_normal
+local GB_ACCENT = beautiful.border_focus
+
+-- Bordas claras (normal e foco iguais, como você pediu)
+beautiful.border_width = beautiful.border_width or 1
+
+-- Wibar herda do tema (seu theme pode já setar isso)
+beautiful.wibar_bg = beautiful.wibar_bg or GB_DARK
+beautiful.wibar_fg = beautiful.wibar_fg or GB_LIGHT
+
+local function set_wallpaper(s)
+	-- Fundo sólido usando a cor do tema
+	local GB_DARK = beautiful.wibar_bg or beautiful.bg_normal or "#1d2021"
+	gears.wallpaper.set(GB_DARK)
+end
+
+beautiful.wallpaper = set_wallpaper
+
 local battery_widget = wibox.widget({
 	widget = wibox.widget.textbox,
 	align = "center",
@@ -61,9 +84,9 @@ gears.timer({
 local volume_slider = wibox.widget({
 	bar_shape = gears.shape.rounded_rect,
 	bar_height = 4,
-	bar_color = "#444444",
-	bar_active_color = "#81A1C1",
-	handle_color = "#81A1C1",
+	bar_color = beautiful.bg_minimize or beautiful.bg_normal, -- trilho
+	bar_active_color = beautiful.border_focus or "#d79921", -- ativo/acento
+	handle_color = beautiful.border_focus or "#d79921",
 	handle_shape = gears.shape.circle,
 	handle_width = 10,
 	minimum = 0,
@@ -117,15 +140,16 @@ local dropdown_btn = wibox.widget({
 	valign = "center",
 })
 
--- Texto fixo do dropdown
-local dropdown_text = wibox.widget({
+-- ==== INFOS E WIDGETS DO DROPDOWN ====
+
+-- Linha: Teclado
+local kb_layout = wibox.widget({
 	widget = wibox.widget.textbox,
-	text = "Teclado: …",
+	text = "…",
 	align = "left",
 	valign = "center",
 })
 
--- Atualiza com o layout atual do teclado (layout + variante, se houver)
 local function update_keyboard_info()
 	awful.spawn.easy_async_with_shell(
 		[[
@@ -138,70 +162,260 @@ local function update_keyboard_info()
 			if layout == "" then
 				layout = "desconhecido"
 			end
-			dropdown_text.text = "Teclado: " .. layout
+			kb_layout.text = layout
 		end
 	)
 end
 
--- Atualiza agora e periodicamente (caso você troque o layout por atalho)
-gears.timer({
-	timeout = 5,
-	autostart = true,
-	call_now = true,
-	callback = update_keyboard_info,
+-- Linha: Wi‑Fi
+local wifi_name = wibox.widget({ widget = wibox.widget.textbox, text = "disconnected", align = "left" })
+local wifi_status = wibox.widget({ widget = wibox.widget.textbox, text = "❌", align = "right" })
+
+local function update_network_info()
+	awful.spawn.easy_async_with_shell(
+		[[
+        if command -v nmcli >/dev/null 2>&1; then
+            SSID=$(nmcli -t -f ACTIVE,SSID dev wifi | awk -F: '$1=="yes"{print $2; exit}')
+            if [ -z "$SSID" ]; then SSID=$(nmcli -t -f NAME connection show --active | head -n1); fi
+            CONN=$(nmcli -t -f CONNECTIVITY general status 2>/dev/null | head -n1)
+        else
+            SSID=$(iwgetid -r 2>/dev/null)
+            if ping -q -w1 -c1 1.1.1.1 >/dev/null; then CONN=full; else CONN=none; fi
+        fi
+        [ -z "$SSID" ] && SSID="disconnected"
+        echo "$SSID|$CONN"
+    ]],
+		function(out)
+			local ssid, conn = (out or ""):match("^(.*)|(%S+)")
+			ssid = (ssid or ""):gsub("%s+$", "")
+			conn = conn or "none"
+			wifi_name.text = ssid ~= "" and ssid or "disconnected"
+			if ssid == "disconnected" or conn == "none" then
+				wifi_status.text = "❌"
+			elseif conn == "full" then
+				wifi_status.text = "✅"
+			else
+				wifi_status.text = "⚠️"
+			end
+		end
+	)
+end
+
+-- Linha: Bateria
+local battery_pct = wibox.widget({ widget = wibox.widget.textbox, text = "--%", align = "right" })
+
+local function update_battery_dropdown()
+	awful.spawn.easy_async_with_shell(
+		[[
+        if [ -d /sys/class/power_supply/BAT0 ]; then
+            cat /sys/class/power_supply/BAT0/capacity
+        elif command -v acpi > /dev/null; then
+            acpi -b | grep -oP '[0-9]+(?=%)'
+        else
+            echo ""
+        fi
+    ]],
+		function(out)
+			local level = tonumber((out or ""):match("%d+"))
+			if level then
+				battery_pct.text = level .. "%"
+			else
+				battery_pct.text = "?"
+			end
+		end
+	)
+end
+
+-- Volume (% já existe como 'volume_percent' e slider como 'volume_slider')
+-- (garante atualização em tempo real já no seu handler existente)
+
+-- Botões de energia
+local function txtbtn(markup, cb)
+	local b = wibox.widget({
+		widget = wibox.widget.textbox,
+		markup = markup,
+		align = "center",
+		valign = "center",
+	})
+	b:buttons(gears.table.join(awful.button({}, 1, cb)))
+	return b
+end
+
+local poweroff_btn = txtbtn("⏻ Desligar", function()
+	awful.spawn.with_shell("systemctl poweroff")
+end)
+local restart_btn = txtbtn("🔄 Reiniciar", function()
+	awful.spawn.with_shell("systemctl reboot")
+end)
+local logout_btn = txtbtn("🚪 Logout", function()
+	awesome.quit()
+end)
+local hibernate_btn = txtbtn("🌙 Hibernar", function()
+	awful.spawn.with_shell("systemctl hibernate")
+end)
+
+-- Cabeçalhos e separadores
+local header_settings = wibox.widget({ widget = wibox.widget.textbox, markup = "<b>Settings</b>" })
+local header_status = wibox.widget({ widget = wibox.widget.textbox, markup = "<b>Status</b>" })
+local sep = wibox.widget({
+	widget = wibox.widget.separator,
+	orientation = "horizontal",
+	thickness = 1,
+	color = beautiful.fg_normal,
+	forced_height = 1,
 })
 
--- Conteúdo do popup (linha 1: teclado; linha 2: volume + slider + %)
+-- ====== LAYOUT DO DROPDOWN (como você especificou) ======
+-- Settings
+-- 🔊 Volume:
+-- [slider...................]        [NN%]
+-- 📶 Wifi
+-- <network_name> / "disconnected"    <status icon>
+-- -----------------------------------------
+-- Status
+-- 🔋 Battery:                         NN%
+-- ⌨️  Teclado:                        <layout>
+-- -----------------------------------------
+-- ⏻ | 🔄 | 🚪 | 🌙
 local dropdown_content = wibox.widget({
-	{
-		-- Linha do teclado
-		dropdown_text, -- já mostra "Teclado: <layout>"
-		margins = 10,
-		widget = wibox.container.margin,
-	},
-	{
-		-- Linha do volume
+	-- Settings
+	{ header_settings, left = 10, right = 10, top = 8, bottom = 2, widget = wibox.container.margin },
+
+	{ -- "🔊 Volume:"
 		{
-			{
-				widget = wibox.widget.textbox,
-				markup = "🔊",
-				align = "center",
-				valign = "center",
-			},
-			wibox.container.constraint(volume_slider, "exact", 140, 14),
-			{
-				volume_percent, -- "73%"
-				left = 8,
-				widget = wibox.container.margin,
-			},
-			spacing = 8,
+			{ widget = wibox.widget.textbox, markup = "🔊  Volume:" },
 			layout = wibox.layout.fixed.horizontal,
 		},
-		margins = 10,
+		left = 10,
+		right = 10,
+		top = 4,
+		bottom = 0,
 		widget = wibox.container.margin,
 	},
+	{ -- slider + %
+		{
+			wibox.container.constraint(volume_slider, "exact", 200, 14),
+			nil,
+			volume_percent,
+			layout = wibox.layout.align.horizontal,
+		},
+		left = 10,
+		right = 10,
+		top = 2,
+		bottom = 8,
+		widget = wibox.container.margin,
+	},
+
+	{ -- "📶 Wifi"
+		{
+			{ widget = wibox.widget.textbox, markup = "📶  Wifi" },
+			layout = wibox.layout.fixed.horizontal,
+		},
+		left = 10,
+		right = 10,
+		top = 0,
+		bottom = 0,
+		widget = wibox.container.margin,
+	},
+	{ -- <network_name> ..... <status icon>
+		{
+			wifi_name,
+			nil,
+			wifi_status,
+			layout = wibox.layout.align.horizontal,
+		},
+		left = 10,
+		right = 10,
+		top = 2,
+		bottom = 8,
+		widget = wibox.container.margin,
+	},
+
+	sep,
+
+	-- Status
+	{ header_status, left = 10, right = 10, top = 8, bottom = 2, widget = wibox.container.margin },
+
+	{ -- 🔋 Battery: .... NN%
+		{
+			{
+				{ widget = wibox.widget.textbox, markup = "🔋  Battery:" },
+				layout = wibox.layout.fixed.horizontal,
+			},
+			nil,
+			battery_pct,
+			layout = wibox.layout.align.horizontal,
+		},
+		left = 10,
+		right = 10,
+		top = 4,
+		bottom = 4,
+		widget = wibox.container.margin,
+	},
+
+	{ -- ⌨️ Teclado: .... <layout>
+		{
+			{
+				{ widget = wibox.widget.textbox, markup = "⌨️  Teclado:" },
+				layout = wibox.layout.fixed.horizontal,
+			},
+			nil,
+			kb_layout,
+			layout = wibox.layout.align.horizontal,
+		},
+		left = 10,
+		right = 10,
+		top = 2,
+		bottom = 8,
+		widget = wibox.container.margin,
+	},
+
+	sep,
+
+	{ -- botões de energia
+		{
+			poweroff_btn,
+			{ widget = wibox.widget.textbox, markup = " | " },
+			restart_btn,
+			{ widget = wibox.widget.textbox, markup = " | " },
+			logout_btn,
+			{ widget = wibox.widget.textbox, markup = " | " },
+			hibernate_btn,
+			spacing = 6,
+			layout = wibox.layout.fixed.horizontal,
+		},
+		left = 10,
+		right = 10,
+		top = 8,
+		bottom = 8,
+		widget = wibox.container.margin,
+	},
+
 	spacing = 0,
 	layout = wibox.layout.fixed.vertical,
 })
 
--- Popup ancorado ao botão (abre abaixo do botão, no canto direito)
+-- Popup com TODO o conteúdo (Settings + Status + Botões)
 local dropdown_popup = awful.popup({
 	widget = wibox.widget({
 		{
 			dropdown_content,
-			margins = 10,
+			margins = 6,
 			widget = wibox.container.margin,
 		},
-		bg = "#222222",
+		bg = beautiful.bg_normal,
+		shape = function(cr, width, height)
+			gears.shape.rounded_rect(cr, width, height, 8)
+		end,
 		widget = wibox.container.background,
 	}),
 	ontop = true,
 	visible = false,
 	shape = gears.shape.rounded_rect,
-	border_width = 1,
-	border_color = "#444444",
-	maximum_width = 360, -- opcional, só p/ evitar esticar
-	maximum_height = 160,
+	border_width = beautiful.border_width,
+	border_color = beautiful.border_normal,
+	maximum_width = 360,
+	maximum_height = 320,
 })
 
 -- Fecha automaticamente quando o mouse sai de cima do popup
@@ -212,6 +426,8 @@ end)
 -- Clique no botão: alterna o popup e atualiza o texto
 dropdown_btn:buttons(gears.table.join(awful.button({}, 1, function()
 	update_keyboard_info()
+	update_network_info()
+	update_battery_dropdown()
 	update_volume()
 
 	local s = awful.screen.focused()
@@ -258,8 +474,6 @@ end
 
 -- {{{ Variable definitions
 -- Themes define colours, icons, font and wallpapers.
-beautiful.init(gears.filesystem.get_configuration_dir() .. "themes/theme.lua")
-beautiful.wallpaper = (gears.filesystem.get_configuration_dir() .. "themes/wall.png")
 
 -- This is used later as the default terminal and editor to run.
 terminal = "alacritty"
@@ -418,7 +632,12 @@ awful.screen.connect_for_each_screen(function(s)
 	})
 
 	-- Create the wibox
-	s.mywibox = awful.wibar({ position = "top", screen = s })
+	s.mywibox = awful.wibar({
+		position = "top",
+		screen = s,
+		bg = beautiful.wibar_bg,
+		fg = beautiful.wibar_fg,
+	})
 
 	-- Add widgets to the wibox
 	s.mywibox:setup({
@@ -441,10 +660,8 @@ awful.screen.connect_for_each_screen(function(s)
 		}),
 		{ -- Right widgets
 			layout = wibox.layout.fixed.horizontal,
-			--mykeyboardlayout,
 			wibox.widget.systray(),
 			battery_widget,
-			--volume_container,
 			dropdown_btn,
 		},
 	})
@@ -752,6 +969,15 @@ end)
 
 client.connect_signal("request::titlebars", function(c)
 	awful.titlebar.hide(c)
+end)
+
+-- Muda cor da borda ao focar/desfocar
+client.connect_signal("focus", function(c)
+	c.border_color = beautiful.border_focus
+end)
+
+client.connect_signal("unfocus", function(c)
+	c.border_color = beautiful.border_normal
 end)
 
 -- }}}

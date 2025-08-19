@@ -11,7 +11,7 @@ local themes_path = gfs.get_themes_dir()
 local theme = {}
 
 -- Font
-theme.font = "JetBrainsMono Nerd Font 10"
+theme.font = "Inter 10"
 
 -- Gruvbox colors
 theme.bg_normal = "#282828"
@@ -26,11 +26,11 @@ theme.fg_urgent = "#fbf1c7"
 theme.fg_minimize = "#ebdbb2"
 
 -- Borders
-theme.border_width = dpi(2)
-theme.border_color_normal = "#282828"
+theme.border_width = dpi(1.2)
+theme.border_normal = "#686868"
+theme.border_focus = "#ebdbb2"
 theme.border_color_active = "#458588"
 theme.border_color_marked = "#b16286"
-theme.border_focus = "#458588"
 
 -- Titlebars
 theme.titlebar_bg_normal = "#282828"
